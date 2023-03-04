@@ -73,7 +73,7 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
           isMonitoringStarted: false,
           isBluetoothAvailable: false,
           IsLocationAvailable: false,
-          debugStm32Message: "Aucun message"
+          debugStm32Message: ""
         };
         this.bluetoothPickerRef = React.createRef<BluetoothPicker>();
     }
@@ -85,7 +85,19 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
     componentDidMount() {
       Location.requestForegroundPermissionsAsync().then(
         (value) => {
-          this.setState({IsLocationAvailable: true})
+          this.setState({IsLocationAvailable: true});
+          this.bleStateWatcher = this.bleManager.onStateChange((state) => {
+            if (state === 'PoweredOn') {
+                requestBLEPermissions().then(() => {
+                  this.setState({isBluetoothAvailable: true});
+                }).catch((error) => {
+                  throw new error(`Ne possède pas les permissions pour le BLE: ${error}`);
+                });
+            } else {
+                this.setState({isBluetoothAvailable: false});
+                console.log(`Nouvel état de l'antenne BLE = ${state}`);
+            }
+          }, true);
         }).catch((msg) => { 
           throw new Error(`Ne possède pas les permissions d'accèss pour la localisation GPS: ${msg}` );
         });
@@ -96,18 +108,7 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
         }
 
         
-        this.bleStateWatcher = this.bleManager.onStateChange((state) => {
-        if (state === 'PoweredOn') {
-            requestBLEPermissions().then(() => {
-              this.setState({isBluetoothAvailable: true});
-            }).catch((error) => {
-              throw new error(`Ne possède pas les permissions pour le BLE: ${error}`);
-            });
-        } else {
-            this.setState({isBluetoothAvailable: false});
-            console.log(`Nouvel état de l'antenne BLE = ${state}`);
-        }
-      }, true);
+        
       this.init_mqtt_client();
     }
     
@@ -126,13 +127,18 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
                 onPress={() => this.monitorRiseVehicule()}
                 title={this.state.isMonitoringStarted ? "Stop": "Start"} >
             </Button>
-            <BluetoothPicker ref={this.bluetoothPickerRef} />
-            <View style={styles.separator}/>
-            <GpsReader GpsLocation={this.state.gpsLocation}></GpsReader>
-            <Stm32Reader message={this.state.debugStm32Message}></Stm32Reader>
-            <Text style={styles.bigtext}>Bluetooth: {this.state.isBluetoothAvailable? "Actif": "Inactif"}</Text>
-            <Text style={styles.bigtext}>Localisation: {this.state.IsLocationAvailable? "Actif": "Inactif"}</Text>
-            <Text style={styles.bigtext}>Bluetooth Status: {this.state.bluetoothErrorFlag? "Erreurs détectée": "Pas d'erreur"}</Text>
+            {
+              this.state.debugStm32Message == "" ?
+              <BluetoothPicker ref={this.bluetoothPickerRef} />
+              :
+              <View style={styles.separatorFiller}>
+                <GpsReader GpsLocation={this.state.gpsLocation}></GpsReader>
+                <Stm32Reader message={this.state.debugStm32Message}></Stm32Reader>
+                <Text style={styles.bigtext}>Bluetooth: {this.state.isBluetoothAvailable? "Actif": "Inactif"}</Text>
+                <Text style={styles.bigtext}>Localisation: {this.state.IsLocationAvailable? "Actif": "Inactif"}</Text>
+                <Text style={styles.bigtext}>Bluetooth Status: {this.state.bluetoothErrorFlag? "Erreurs détectée": "Pas d'erreur"}</Text>
+              </View>
+            }
           </View>
       );
   }
@@ -144,6 +150,7 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
           if(this.state.isBluetoothAvailable) {
             this.scan();
             this.stm32Device = await this.bluetoothPickerRef.current?.WaitForDevice();
+            this.bleManager.stopDeviceScan();
             this.stm32Device = await this.stm32Device?.connect();
             this.stm32Device = await this.stm32Device?.discoverAllServicesAndCharacteristics();
             let stm32SerialCharacteristic = await this.findSerialCharacteristicInDevice();
@@ -157,6 +164,9 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
           if(this.state.isBluetoothAvailable) {
             this.hm10Monitor?.remove();
             await this.stm32Device?.cancelConnection();
+
+            this.bluetoothPickerRef.current?.ClearDeviceList();
+            this.setState({debugStm32Message: ""});
           }
         }
       } catch (error) {
@@ -258,43 +268,35 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
         (error) => {
           if (error) {
             console.error(error)
-          } else {
-            console.log('Published')
           }
         }
       )
     }
 
     private sendGPSLocation(gpsLocation: Location.LocationObject){
-      var lat = gpsLocation.coords.latitude;
-      var long = gpsLocation.coords.longitude;
-
-      let msg = 'vehicle coordonates: \n\r' + 'Latitude-> ' + lat + '\n\r' + 'Longitude-> ' + long
-      /*
-      client.subscribe('Rise-GPS-Data', { qos: 0 }, function (error, granted) {
-        if (error) {
-          console.log(error)
-        } else {
-          console.log(`${granted[0].topic} was subscribed`)
-        }
-      })   
-      client.on('message', function (topic, payload, packet) {
-        console.log(`Topic: ${topic}, Message: ${payload.toString()}, QoS: ${packet.qos}`)
-      })
-      */
+      var lat = String(gpsLocation.coords.latitude);
+      var long = String(gpsLocation.coords.longitude);
+      var timestamp = gpsLocation.timestamp;
       
-      this.mqttClient?.publish(
-        'Rise-GPS-Data', 
-        msg, 
-        { qos: 0, retain: false }, 
-        (error) => {
-          if (error) {
-            console.log(error)
-          } else {
-            console.log('Published')
-          }
+      var date = new Date(timestamp).toLocaleString("fr-CA")
+
+      this.mqttClient?.publish('Rise-GPS-latitude', lat, { qos: 0, retain: false }, function (error) {
+        if (error) {
+          console.error(error)
         }
-      )
+      })
+
+      this.mqttClient?.publish('Rise-GPS-longitude', long, { qos: 0, retain: false }, function (error) {
+        if (error) {
+          console.error(error)
+        }
+      })
+
+      this.mqttClient?.publish('Rise-GPS-timestamp', date, { qos: 0, retain: false }, function (error) {
+        if (error) {
+          console.error(error)
+        }
+      })
     }
 }
 
@@ -312,6 +314,13 @@ const styles = StyleSheet.create({
     marginVertical: 30,
     height: 1,
     width: '80%',
+  },
+  separatorFiller: {
+    marginVertical: 30,
+    height: 1,
+    width: '80%',
+    flexGrow: 1,
+    alignItems: "flex-start"
   },
   button: {
     fontSize: 24,
