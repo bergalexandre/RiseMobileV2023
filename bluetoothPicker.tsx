@@ -99,7 +99,7 @@ export default class BluetoothPicker extends React.Component<BluetoothPickerProp
             <View style={styles.container}>
                 {this.state.isReady ? 
                     <View>
-                        <Text>Select the device you want to connect</Text>
+                        <Text style={styles.bigtext}>Select the device you want to connect</Text>
                         <View style={styles.container}>
                             <WheelPicker
                                 visibleRest={10}
@@ -117,8 +117,8 @@ export default class BluetoothPicker extends React.Component<BluetoothPickerProp
                     </View>
                     :
                     <View>
-                        <Text>Click Start to begin the scanning process.</Text>
-                        <Text>Found {this.state.deviceCount} devices</Text>
+                        <Text style={styles.bigtext}>Click Start to begin the scanning process.</Text>
+                        <Text style={styles.bigtext}>Found {this.state.deviceCount} devices</Text>
                     </View>
                 }
                 
