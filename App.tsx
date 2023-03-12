@@ -119,8 +119,8 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
 
     }
 
-    render() {
-      /*return (
+    render() {/*
+      return (
           <View style={styles.container}>
             <Text style={styles.title}>Rise Mobile</Text>
             <View style={styles.separator}/>
@@ -143,7 +143,7 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
           </View>
       );*/
       return (
-        <DalyBms></DalyBms>
+        <DalyBms bleManager={this.bleManager}></DalyBms>
       )
   }
 

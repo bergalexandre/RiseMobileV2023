@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Button, Text, TextInput } from 'react-native';
-import { BleError, Characteristic, Device, DeviceId, Service, Subscription as BleSubscription } from 'react-native-ble-plx';
+import { BleError, BleManager, Characteristic, Device, Service, Subscription as BleSubscription } from 'react-native-ble-plx';
 import WheelPicker from 'react-native-wheely';
 import BluetoothPicker from './bluetoothPicker';
 
@@ -22,6 +22,7 @@ type DalyBmsState = {
 }
 
 export type DalyBmsProps = {
+    bleManager: BleManager
 }
 
 class DalyBmsError extends Error {}
@@ -30,9 +31,9 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
 {
     private resolvePromise: ((device: Device) => void) | null = null;
     private dalyBms: Device|undefined;
-    private readonly NoDevice: DeviceId = "No device";
-    private timer: NodeJS.Timeout|undefined;
     private bluetoothPickerRef: React.RefObject<BluetoothPicker>;
+    private bleManager: BleManager|undefined;
+    private _isMonitoringStarted: boolean;
 
     constructor(props:DalyBmsProps) {
         super(props);
@@ -41,15 +42,18 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
             connectionStatus: ConnectionStatus.NotConnected,
             error: "",
             dalyResponse: "",
-            isMonitoringStarted: true,
+            isMonitoringStarted: false,
             serviceIndex: "0",
             characteristicUuid: "15",
             socCommand: "90"
         };
         this.bluetoothPickerRef = React.createRef<BluetoothPicker>();
+        this.bleManager = props.bleManager;
+        this._isMonitoringStarted = false;
     }
 
     private async monitorDalyBmsAsync(): Promise<void> {
+        this.scan();
         this.dalyBms = await this.bluetoothPickerRef.current?.WaitForDevice();
         try {
             this.dalyBms = await this.dalyBms?.connect({timeout: 5000});
@@ -80,19 +84,30 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
             await services[Number(this.state.serviceIndex)].writeCharacteristicWithoutResponse("48","");
 
             // soc ??
-            while(this.state.isMonitoringStarted == true) {
+            while(this._isMonitoringStarted == true) {
                 await services[Number(this.state.serviceIndex)]
                 .writeCharacteristicWithoutResponse(
                     this.state.characteristicUuid,
                     this.state.socCommand
                 );
-                await setTimeout(() => undefined, 1000);
+                await new Promise(f => setTimeout(f, 1000));
             }
             
         }
         //this.dalyBms?.writeCharacteristicWithoutResponseForService("48")
         
     }
+
+    private scan(): void {
+        this.bleManager?.startDeviceScan(null, null, (error, device) => {
+          if(error) {
+            throw error;
+          }
+          if(device) {
+            this.bluetoothPickerRef.current?.AddDevice(device);
+          }
+        })
+      }
 
     private monitorDaly(dalyError: BleError|null, characteristic: Characteristic|null): void {
         if(dalyError) {
@@ -114,8 +129,9 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
 
     }
 
-    private monitorDalyBms(): void {
-        if(this.state.isMonitoringStarted == false) {
+    private monitorDalyBms(isMonitoringStarted: boolean): void {
+        if(isMonitoringStarted == false) {
+            this._isMonitoringStarted = true;
             this.setState({isMonitoringStarted: true});
             this.monitorDalyBmsAsync()
                 .then()
@@ -129,6 +145,7 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
                     }
                 });
         } else {
+            this._isMonitoringStarted = false;
             this.setState({isMonitoringStarted: false});
         }
     }
@@ -145,7 +162,7 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
         this.setState({socCommand: text})
     }
 
-    render() {
+    public render() {
         return (
             <View style={styles.container}>
                 <Text style={styles.bigtext}> 
@@ -165,36 +182,39 @@ export default class DalyBms extends React.Component<DalyBmsProps, DalyBmsState>
                         </Text>
                     </View>
                 }
-                    
+                <View style={styles.container}>
                 <View style={styles.containerRow}>
                     <Text style={styles.bigtext}>service</Text>
                     <TextInput 
-                        style={styles.bigtext} 
+                        style={styles.textInput} 
                         editable={true}
                         multiline={false}
-                        onChangeText={this.handleServiceIndexChange}/>
+                        value={this.state.serviceIndex}
+                        onChangeText={(text) => this.handleServiceIndexChange(text)}/>
                 </View>
 
                 <View style={styles.containerRow}>
                     <Text style={styles.bigtext}>characteristic</Text>
                     <TextInput 
-                        style={styles.bigtext} 
+                        style={styles.textInput} 
                         editable={true}
                         multiline={false}
-                        onChangeText={this.handleCharacteristicChange}/>
+                        value={this.state.characteristicUuid}
+                        onChangeText={(text) => this.handleCharacteristicChange(text)}/>
                 </View>
 
                 <View style={styles.containerRow}>
                     <Text style={styles.bigtext}>command</Text>
                     <TextInput 
-                        style={styles.bigtext} 
+                        style={styles.textInput} 
                         editable={true}
                         multiline={false}
-                        onChangeText={this.handleCommandChange}/>
+                        value={this.state.socCommand}
+                        onChangeText={(text) => this.handleCommandChange(text)}/>
                 </View>
-                
+                </View>
                 <Button
-                    onPress={this.monitorDalyBms()}
+                    onPress={() => this.monitorDalyBms(this.state.isMonitoringStarted)}
                     title={this.state.isMonitoringStarted ? "Stop": "Start"} >
                 </Button>
             </View>
@@ -233,6 +253,9 @@ const styles = StyleSheet.create({
     },
     WheelPicker: {
         flex: 4
+    },
+    textInput: {
+        padding: 10
     }
   });
   
