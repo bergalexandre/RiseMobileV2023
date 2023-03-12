@@ -6,6 +6,7 @@ import { BleError, BleManager, Characteristic, Device, Service, Subscription as 
 import mqtt, { MqttClient } from "precompiled-mqtt";
 import { Buffer } from "buffer";
 import BluetoothPicker from './bluetoothPicker';
+import DalyBms from './dalybmsBle';
 
 type GPSReaderProps = {
   GpsLocation: Location.LocationObject
@@ -119,7 +120,7 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
     }
 
     render() {
-      return (
+      /*return (
           <View style={styles.container}>
             <Text style={styles.title}>Rise Mobile</Text>
             <View style={styles.separator}/>
@@ -140,7 +141,10 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
               </View>
             }
           </View>
-      );
+      );*/
+      return (
+        <DalyBms></DalyBms>
+      )
   }
 
     private async monitorRiseVehicule(): Promise<void> {
