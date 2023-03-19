@@ -119,7 +119,7 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
 
     }
 
-    render() {/*
+    render() {
       return (
           <View style={styles.container}>
             <Text style={styles.title}>Rise Mobile</Text>
@@ -141,10 +141,10 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
               </View>
             }
           </View>
-      );*/
-      return (
+      );
+      /*return (
         <DalyBms bleManager={this.bleManager}></DalyBms>
-      )
+      )*/
   }
 
     private async monitorRiseVehicule(): Promise<void> {
@@ -284,23 +284,17 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
       
       var date = new Date(timestamp).toLocaleString("fr-CA")
 
-      this.mqttClient?.publish('Rise-GPS-latitude', lat, { qos: 0, retain: false }, function (error) {
+      var jsonPosition = '{ "coordonee" : ' + 
+        '[{ "latitude":' + lat.toString() + ', "longitude":' + long.toString() + ', "timestamp":' + date + '} ' +
+        '}]';
+        
+      this.mqttClient?.publish('Rise-GPS-Position', jsonPosition, { qos: 0, retain: false }, function (error) {
         if (error) {
-          console.error(error)
+          console.log(error)
+        } else {
+          console.log('Published')
         }
-      })
-
-      this.mqttClient?.publish('Rise-GPS-longitude', long, { qos: 0, retain: false }, function (error) {
-        if (error) {
-          console.error(error)
-        }
-      })
-
-      this.mqttClient?.publish('Rise-GPS-timestamp', date, { qos: 0, retain: false }, function (error) {
-        if (error) {
-          console.error(error)
-        }
-      })
+      })  
     }
 }
 
