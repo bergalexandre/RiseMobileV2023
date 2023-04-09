@@ -285,8 +285,8 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
       var date = new Date(timestamp).toLocaleString("fr-CA")
 
       var jsonPosition = '{ "coordonee" : ' + 
-        '[{ "latitude":' + lat.toString() + ', "longitude":' + long.toString() + ', "timestamp":' + date + '} ' +
-        '}]';
+        '[{ "latitude":' + lat.toString() + ', "longitude":' + long.toString() + "altitude" + ', "timestamp":' + '"' + date + '"}' +
+        ']}';
         
       this.mqttClient?.publish('Rise-GPS-Position', jsonPosition, { qos: 0, retain: false }, function (error) {
         if (error) {
