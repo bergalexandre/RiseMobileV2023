@@ -1,6 +1,6 @@
 {
   "name": "risemobilev2023",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -11,7 +11,7 @@
     "@config-plugins/react-native-ble-plx": "^5.0.0",
     "@types/node": "^18.14.4",
     "buffer": "^5.7.1",
-    "expo": "~47.0.12",
+    "expo": "~47.0.14",
     "expo-dev-client": "~2.0.1",
     "expo-location": "~15.0.1",
     "expo-splash-screen": "~0.17.5",
@@ -19,7 +19,7 @@
     "precompiled-mqtt": "^4.3.14-beta",
     "react": "18.1.0",
     "react-dom": "18.1.0",
-    "react-native": "0.70.5",
+    "react-native": "0.70.8",
     "react-native-ble-plx": "^2.0.3",
     "react-native-web": "~0.18.9",
     "react-native-wheely": "^0.6.0"

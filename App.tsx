@@ -56,6 +56,12 @@ type RiseMobileScreenState = {
   debugStm32Message: string
 }
 
+
+type GPSCoordinate = {
+  latitude: number,
+  longitude: number,
+  timestamp: number
+};
 export default class RiseMobileScreen extends React.Component<HomeScreenProps, RiseMobileScreenState>
 {
     private stm32Device ?: Device = undefined; 
@@ -278,17 +284,16 @@ export default class RiseMobileScreen extends React.Component<HomeScreenProps, R
     }
 
     private sendGPSLocation(gpsLocation: Location.LocationObject){
-      var lat = String(gpsLocation.coords.latitude);
-      var long = String(gpsLocation.coords.longitude);
-      var timestamp = gpsLocation.timestamp;
-      
-      var date = new Date(timestamp).toLocaleString("fr-CA")
 
-      var jsonPosition = '{ "coordonee" : ' + 
-        '[{ "latitude":' + lat.toString() + ', "longitude":' + long.toString() + "altitude" + ', "timestamp":' + '"' + date + '"}' +
-        ']}';
-        
-      this.mqttClient?.publish('Rise-GPS-Position', jsonPosition, { qos: 0, retain: false }, function (error) {
+      let gpsCoordinate: GPSCoordinate = {
+        latitude: gpsLocation.coords.latitude,
+        longitude: gpsLocation.coords.longitude,
+        timestamp: gpsLocation.timestamp
+      };
+
+      let message_encoded = JSON.stringify(gpsCoordinate);
+
+      this.mqttClient?.publish('Rise-GPS-Position', message_encoded, { qos: 0, retain: false }, function (error) {
         if (error) {
           console.log(error)
         } else {
